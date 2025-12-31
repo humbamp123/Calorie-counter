@@ -140,6 +140,22 @@
             margin: 0 20px;
         }
 
+        .edit-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-right: 10px;
+        }
+
+        .edit-btn:hover {
+            background: #2980b9;
+        }
+
         .remove-btn {
             background: #ff4757;
             color: white;
@@ -250,7 +266,8 @@
                 </div>
             </div>
 
-            <button onclick="addItem()">Add Item</button>
+            <button id="submitBtn" onclick="addItem()">Add Item</button>
+            <button id="cancelBtn" onclick="cancelEdit()" style="display: none; background: #95a5a6; margin-top: 5px;">Cancel Edit</button>
         </div>
 
         <div class="items-list" id="itemsList">
@@ -265,6 +282,7 @@
 
     <script>
         let items = [];
+        let editingItemId = null;
 
         function calculateCalories(caloriesPerWeight, weightUnit, consumedWeight, consumedUnit) {
             // Convert everything to a common base for calculation
@@ -339,17 +357,37 @@
 
             const calories = calculateCalories(caloriesPerWeight, weightUnit, consumedWeight, consumedUnit);
 
-            const item = {
-                id: Date.now(),
-                name: itemName,
-                caloriesPerWeight: caloriesPerWeight,
-                weightUnit: weightUnit,
-                consumedWeight: consumedWeight,
-                consumedUnit: consumedUnit,
-                totalCalories: calories
-            };
+            if (editingItemId !== null) {
+                // Update existing item
+                const itemIndex = items.findIndex(item => item.id === editingItemId);
+                if (itemIndex !== -1) {
+                    items[itemIndex] = {
+                        id: editingItemId,
+                        name: itemName,
+                        caloriesPerWeight: caloriesPerWeight,
+                        weightUnit: weightUnit,
+                        consumedWeight: consumedWeight,
+                        consumedUnit: consumedUnit,
+                        totalCalories: calories
+                    };
+                }
+                editingItemId = null;
+                document.getElementById('submitBtn').textContent = 'Add Item';
+                document.getElementById('cancelBtn').style.display = 'none';
+            } else {
+                // Add new item
+                const item = {
+                    id: Date.now(),
+                    name: itemName,
+                    caloriesPerWeight: caloriesPerWeight,
+                    weightUnit: weightUnit,
+                    consumedWeight: consumedWeight,
+                    consumedUnit: consumedUnit,
+                    totalCalories: calories
+                };
+                items.push(item);
+            }
 
-            items.push(item);
             renderItems();
             clearForm();
         }
@@ -357,6 +395,33 @@
         function removeItem(id) {
             items = items.filter(item => item.id !== id);
             renderItems();
+        }
+
+        function editItem(id) {
+            const item = items.find(item => item.id === id);
+            if (!item) return;
+
+            // Populate form with item data
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('caloriesPerWeight').value = item.caloriesPerWeight;
+            document.getElementById('weightUnit').value = item.weightUnit;
+            document.getElementById('consumedWeight').value = item.consumedWeight;
+            document.getElementById('consumedUnit').value = item.consumedUnit;
+
+            // Set edit mode
+            editingItemId = id;
+            document.getElementById('submitBtn').textContent = 'Update Item';
+            document.getElementById('cancelBtn').style.display = 'block';
+
+            // Scroll to form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingItemId = null;
+            document.getElementById('submitBtn').textContent = 'Add Item';
+            document.getElementById('cancelBtn').style.display = 'none';
+            clearForm();
         }
 
         function renderItems() {
@@ -377,6 +442,7 @@
                         </div>
                     </div>
                     <div class="item-calories">${Math.round(item.totalCalories)} cal</div>
+                    <button class="edit-btn" onclick="editItem(${item.id})">Edit</button>
                     <button class="remove-btn" onclick="removeItem(${item.id})">Remove</button>
                 </div>
             `).join('');
