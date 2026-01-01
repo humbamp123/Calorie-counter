@@ -75,6 +75,12 @@
             gap: 15px;
         }
 
+        .form-row-triple {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -210,6 +216,10 @@
                 grid-template-columns: 1fr;
             }
 
+            .form-row-triple {
+                grid-template-columns: 1fr;
+            }
+
             .item {
                 flex-direction: column;
                 align-items: flex-start;
@@ -231,20 +241,24 @@
                 <input type="text" id="itemName" placeholder="e.g., Chicken Breast, Rice, Apple">
             </div>
 
-            <div class="form-row">
+            <div class="form-row-triple">
                 <div class="form-group">
-                    <label for="caloriesPerWeight">Calories per Weight</label>
+                    <label for="caloriesPerWeight">Calories</label>
                     <input type="number" id="caloriesPerWeight" placeholder="e.g., 165" step="0.1" min="0">
                 </div>
 
                 <div class="form-group">
-                    <label for="weightUnit">Weight Unit</label>
+                    <label for="referenceAmount">per Amount</label>
+                    <input type="number" id="referenceAmount" placeholder="e.g., 100" step="0.1" min="0" value="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="weightUnit">Unit</label>
                     <select id="weightUnit">
-                        <option value="100g">per 100g</option>
-                        <option value="g">per gram</option>
-                        <option value="oz">per ounce</option>
-                        <option value="lb">per pound</option>
-                        <option value="serving">per serving</option>
+                        <option value="g">grams</option>
+                        <option value="oz">ounces</option>
+                        <option value="lb">pounds</option>
+                        <option value="serving">serving</option>
                     </select>
                 </div>
             </div>
@@ -284,59 +298,63 @@
         let items = [];
         let editingItemId = null;
 
-        function calculateCalories(caloriesPerWeight, weightUnit, consumedWeight, consumedUnit) {
-            // Convert everything to a common base for calculation
-            let baseCalories = caloriesPerWeight;
-            let baseWeight = consumedWeight;
+        function calculateCalories(caloriesPerWeight, referenceAmount, weightUnit, consumedWeight, consumedUnit) {
+            // Handle serving-to-serving calculations directly
+            if (weightUnit === 'serving' && consumedUnit === 'serving') {
+                return (caloriesPerWeight / referenceAmount) * consumedWeight;
+            }
 
-            // Normalize calories to per gram
+            // Convert reference amount to grams (calories per gram base)
+            let caloriesPerGram;
+            let referenceInGrams;
+
             switch(weightUnit) {
-                case '100g':
-                    baseCalories = caloriesPerWeight / 100;
-                    break;
                 case 'g':
-                    baseCalories = caloriesPerWeight;
+                    referenceInGrams = referenceAmount;
                     break;
                 case 'oz':
-                    baseCalories = caloriesPerWeight / 28.3495;
+                    referenceInGrams = referenceAmount * 28.3495;
                     break;
                 case 'lb':
-                    baseCalories = caloriesPerWeight / 453.592;
+                    referenceInGrams = referenceAmount * 453.592;
                     break;
                 case 'serving':
-                    // For serving, we'll calculate directly
-                    if (consumedUnit === 'serving') {
-                        return caloriesPerWeight * consumedWeight;
-                    }
-                    baseCalories = caloriesPerWeight;
+                    // If reference is serving but consumed is weight, treat serving as unit amount
+                    referenceInGrams = referenceAmount;
                     break;
             }
 
-            // Convert consumed weight to grams
+            caloriesPerGram = caloriesPerWeight / referenceInGrams;
+
+            // Convert consumed amount to grams
+            let consumedInGrams;
+
             switch(consumedUnit) {
                 case 'g':
-                    baseWeight = consumedWeight;
+                    consumedInGrams = consumedWeight;
                     break;
                 case 'oz':
-                    baseWeight = consumedWeight * 28.3495;
+                    consumedInGrams = consumedWeight * 28.3495;
                     break;
                 case 'lb':
-                    baseWeight = consumedWeight * 453.592;
+                    consumedInGrams = consumedWeight * 453.592;
                     break;
                 case 'serving':
-                    if (weightUnit === 'serving') {
+                    // If consumed is serving but reference is weight, use reference as multiplier
+                    if (weightUnit !== 'serving') {
                         return caloriesPerWeight * consumedWeight;
                     }
-                    baseWeight = consumedWeight;
+                    consumedInGrams = consumedWeight;
                     break;
             }
 
-            return baseCalories * baseWeight;
+            return caloriesPerGram * consumedInGrams;
         }
 
         function addItem() {
             const itemName = document.getElementById('itemName').value.trim();
             const caloriesPerWeight = parseFloat(document.getElementById('caloriesPerWeight').value);
+            const referenceAmount = parseFloat(document.getElementById('referenceAmount').value);
             const weightUnit = document.getElementById('weightUnit').value;
             const consumedWeight = parseFloat(document.getElementById('consumedWeight').value);
             const consumedUnit = document.getElementById('consumedUnit').value;
@@ -350,12 +368,16 @@
                 alert('Please enter valid calories per weight');
                 return;
             }
+            if (isNaN(referenceAmount) || referenceAmount <= 0) {
+                alert('Please enter valid reference amount');
+                return;
+            }
             if (isNaN(consumedWeight) || consumedWeight <= 0) {
                 alert('Please enter valid consumed weight');
                 return;
             }
 
-            const calories = calculateCalories(caloriesPerWeight, weightUnit, consumedWeight, consumedUnit);
+            const calories = calculateCalories(caloriesPerWeight, referenceAmount, weightUnit, consumedWeight, consumedUnit);
 
             if (editingItemId !== null) {
                 // Update existing item
@@ -365,6 +387,7 @@
                         id: editingItemId,
                         name: itemName,
                         caloriesPerWeight: caloriesPerWeight,
+                        referenceAmount: referenceAmount,
                         weightUnit: weightUnit,
                         consumedWeight: consumedWeight,
                         consumedUnit: consumedUnit,
@@ -380,6 +403,7 @@
                     id: Date.now(),
                     name: itemName,
                     caloriesPerWeight: caloriesPerWeight,
+                    referenceAmount: referenceAmount,
                     weightUnit: weightUnit,
                     consumedWeight: consumedWeight,
                     consumedUnit: consumedUnit,
@@ -404,6 +428,7 @@
             // Populate form with item data
             document.getElementById('itemName').value = item.name;
             document.getElementById('caloriesPerWeight').value = item.caloriesPerWeight;
+            document.getElementById('referenceAmount').value = item.referenceAmount;
             document.getElementById('weightUnit').value = item.weightUnit;
             document.getElementById('consumedWeight').value = item.consumedWeight;
             document.getElementById('consumedUnit').value = item.consumedUnit;
@@ -438,7 +463,7 @@
                     <div class="item-details">
                         <div class="item-name">${item.name}</div>
                         <div class="item-info">
-                            ${item.caloriesPerWeight} cal/${item.weightUnit} × ${item.consumedWeight} ${item.consumedUnit}
+                            ${item.caloriesPerWeight} cal per ${item.referenceAmount} ${item.weightUnit} × ${item.consumedWeight} ${item.consumedUnit}
                         </div>
                     </div>
                     <div class="item-calories">${Math.round(item.totalCalories)} cal</div>
@@ -458,6 +483,7 @@
         function clearForm() {
             document.getElementById('itemName').value = '';
             document.getElementById('caloriesPerWeight').value = '';
+            document.getElementById('referenceAmount').value = '100';
             document.getElementById('consumedWeight').value = '';
         }
 
@@ -467,6 +493,94 @@
                 addItem();
             }
         });
+
+        // ========== TESTS ==========
+        // Uncomment to run tests on page load
+        /*
+        function runTests() {
+            console.log('🧪 Running Calorie Calculator Tests...\n');
+
+            const tests = [
+                {
+                    name: "Basic same unit",
+                    args: [100, 100, 'g', 100, 'g'],
+                    expected: 100
+                },
+                {
+                    name: "Custom reference",
+                    args: [165, 150, 'g', 100, 'g'],
+                    expected: 110
+                },
+                {
+                    name: "Mixed units g→oz",
+                    args: [200, 100, 'g', 1, 'oz'],
+                    expected: 56.699
+                },
+                {
+                    name: "Serving to serving",
+                    args: [250, 1, 'serving', 2, 'serving'],
+                    expected: 500
+                },
+                {
+                    name: "Pounds to grams",
+                    args: [454, 1, 'lb', 100, 'g'],
+                    expected: 100.088
+                },
+                {
+                    name: "Oz to oz",
+                    args: [100, 2, 'oz', 4, 'oz'],
+                    expected: 200
+                },
+                {
+                    name: "Decimal values",
+                    args: [165.5, 100, 'g', 50.5, 'g'],
+                    expected: 83.5775
+                },
+                {
+                    name: "Zero calories",
+                    args: [0, 100, 'g', 100, 'g'],
+                    expected: 0
+                },
+                {
+                    name: "Large serving",
+                    args: [300, 2, 'serving', 5, 'serving'],
+                    expected: 750
+                },
+                {
+                    name: "Small amount",
+                    args: [100, 100, 'g', 0.1, 'g'],
+                    expected: 0.1
+                }
+            ];
+
+            let passed = 0;
+            let failed = 0;
+
+            tests.forEach(test => {
+                const result = calculateCalories(...test.args);
+                const tolerance = 0.01; // Allow small floating point differences
+                const pass = Math.abs(result - test.expected) < tolerance;
+
+                if (pass) {
+                    console.log(`✅ ${test.name}`);
+                    passed++;
+                } else {
+                    console.log(`❌ ${test.name}`);
+                    console.log(`   Expected: ${test.expected}, Got: ${result}`);
+                    failed++;
+                }
+            });
+
+            console.log(`\n📊 Results: ${passed} passed, ${failed} failed`);
+
+            if (failed === 0) {
+                console.log('🎉 All tests passed!');
+            }
+        }
+
+        // Uncomment to run tests automatically:
+        // runTests();
+        */
     </script>
 </body>
 </html>
