@@ -978,13 +978,27 @@
             .dashboard { padding: 15px; }
             .header h1 { font-size: 1.2rem; }
             .status-bar { flex-direction: column; gap: 8px; }
-            .date-nav { flex-wrap: wrap; padding: 10px; }
-            .date-display { font-size: 14px; min-width: 180px; }
+            .date-nav { flex-wrap: wrap; padding: 10px; gap: 10px; }
+            .date-nav-btn { width: 36px; height: 36px; font-size: 14px; }
+            .date-nav-btn.today-btn { padding: 0 12px; font-size: 11px; }
+            .date-display {
+                font-size: 14px;
+                width: 100%;
+                order: -1;
+                min-width: unset;
+                padding: 8px 15px;
+            }
             .item-row { grid-template-columns: 1fr; gap: 8px; }
             .item-calories { text-align: left; }
             .item-bar { max-width: 100%; }
             .gauge-container { width: 140px; height: 140px; }
             .gauge-value { font-size: 22px; }
+
+            /* Calendar mobile fixes */
+            .calendar-modal { min-width: unset; width: calc(100vw - 40px); max-width: 320px; padding: 15px; }
+            .calendar-day { padding: 6px 2px; font-size: 12px; }
+            .calendar-weekday { font-size: 10px; padding: 3px; }
+            .calendar-day.has-data::after { width: 3px; height: 3px; margin: 2px auto 0; }
         }
 
         /* Corner decorations */
