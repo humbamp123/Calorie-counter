@@ -707,6 +707,12 @@
             .form-row.triple, .form-row.quad { grid-template-columns: 1fr 1fr; }
         }
 
+        @media (max-width: 500px) {
+            .form-row,
+            .form-row.triple,
+            .form-row.quad { grid-template-columns: 1fr; }
+        }
+
         .input-group {
             display: flex;
             flex-direction: column;
